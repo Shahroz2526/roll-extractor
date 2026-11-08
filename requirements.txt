@@ -1,0 +1,14 @@
+<<<<<<< HEAD
+Flask==3.0.0
+pandas==2.0.3
+openpyxl==3.1.2
+pdfplumber==0.10.2
+werkzeug==3.0.1
+=======
+Flask==3.0.0
+pandas==2.0.3
+openpyxl==3.1.2
+pdfplumber==0.10.2
+werkzeug==3.0.1
+>>>>>>> 72bbe7b7bda494596cc4f0a6095d50165bc5388c
+gunicorn==21.2.0

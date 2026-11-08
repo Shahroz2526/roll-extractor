@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roll Number & Attendance Verification System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .page-badge {
+            display: inline-block;
+            background: #e8f1ff;
+            color: #0d6efd;
+            padding: 4px 10px;
+            margin: 3px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        /* TOP DASHBOARD METRIC CARDS */
+        .stat-card {
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .bg-total {
+            background-color: #0d6efd;
+        }
+
+        .bg-found {
+            background-color: #198754;
+        }
+
+        .bg-notfound {
+            background-color: #dc3545;
+        }
+
+        .bg-exist {
+            background-color: #ffc107;
+            color: #000 !important;
+        }
+
+        /* IMAGE PREVIEW WITH SMART FOCUS & SCROLL */
+        .img-preview-box {
+            height: 82vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            background: #1e293b;
+            text-align: center;
+            position: relative;
+            scroll-behavior: smooth;
+        }
+
+        .img-preview-box img {
+            width: 100%;
+            height: auto;
+            min-width: 800px;
+            display: block;
+            margin: 0 auto;
+            transition: transform 0.2s ease;
+        }
+
+        .student-input-list {
+            height: 82vh;
+            overflow-y: auto;
+        }
+
+        .subject-card {
+            background: #ffffff;
+            border-left: 4px solid #0d6efd;
+            border-radius: 8px;
+        }
+
+        .file-list-badge {
+            font-size: 12px;
+            margin: 2px;
+        }
+
+        .input-active-row {
+            background-color: #e0f2fe !important;
+            border-left: 4px solid #0284c7 !important;
+        }
+
+        /* Processing Modal */
+        .processing-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .processing-card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 420px;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body class="container-fluid py-3 px-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h4 class="fw-bold text-dark mb-0"><i class="bi bi-journal-check text-primary me-2"></i>Roll Number &
+                Attendance Extractor</h4>
+            <small class="text-muted">Automated Verification & Guided Input System</small>
+        </div>
+        <span class="badge bg-primary px-3 py-2">System Active</span>
+    </div>
+
+    <!-- 4 STATUS BOXES DASHBOARD -->
+    {% if summary %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-total shadow-sm">
+                <small class="text-uppercase opacity-75">Total Rows / Roll Numbers</small>
+                <h2 class="mb-0 fw-bold">{{ summary.total if summary.total is defined else summary.found }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-found shadow-sm">
+                <small class="text-uppercase opacity-75">Found & Mapped</small>
+                <h2 class="mb-0 fw-bold">{{ summary.found }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-notfound shadow-sm">
+                <small class="text-uppercase opacity-75">Not Found</small>
+                <h2 class="mb-0 fw-bold">{{ summary.not_found if summary.not_found is defined else 0 }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-exist shadow-sm">
+                <small class="text-uppercase opacity-75">Already Exist (Skipped)</small>
+                <h2 class="mb-0 fw-bold">{{ summary.already_exist if summary.already_exist is defined else 0 }}</h2>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- STEP 1: INITIAL UPLOAD -->
+    {% if step == '1' %}
+    <div class="card p-4 mx-auto" style="max-width: 850px;">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-upload text-primary me-2"></i>Step 1: Process PDFs & Extract
+            Student Details</h5>
+        <p class="text-muted small">Upload subject PDFs and Master Excel sheet for automated verification mapping.</p>
+        <hr class="my-3">
+
+        <form method="POST" enctype="multipart/form-data"
+            onsubmit="showProcessingModal('Analyzing documents and matching student records...')">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label font-semibold fw-bold">Security Passcode</label>
+                    <input type="password" name="passcode" class="form-control" required placeholder="Enter Passcode">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label font-semibold fw-bold">Select PDF Documents</label>
+                    <input type="file" id="pdfFileInput" name="pdf_files" class="form-control" multiple required
+                        accept=".pdf" onchange="displaySelectedFileNames(this, 'pdfFilesContainer')">
+                    <div id="pdfFilesContainer" class="mt-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label font-semibold fw-bold">Master Excel File</label>
+                    <input type="file" name="excel_file" class="form-control" required accept=".xlsx, .xls">
+                </div>
+                <div class="col-12 text-end mt-4">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="bi bi-gear-wide-connected me-1"></i> Start Step 1 Processing
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- STEP 1 COMPLETED -->
+    {% if step == '1_completed' %}
+    <div class="card p-4 mx-auto" style="max-width: 950px;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-success mb-1"><i class="bi bi-check-circle-fill me-2"></i>Step 1 Processing
+                    Complete!</h5>
+                <p class="mb-0 text-muted">Successfully mapped <strong>{{ summary.found }}</strong> student records.</p>
+            </div>
+            <a href="/download/{{ download_file }}" class="btn btn-outline-success fw-bold">
+                <i class="bi bi-file-earmark-excel me-1"></i> Download Step 1 Excel
+            </a>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="mb-4">
+            <h6 class="fw-bold text-dark mb-2">Identified Target Pages:</h6>
+            <div class="p-2 bg-light rounded border" style="max-height: 180px; overflow-y: auto;">
+                {% for pdf_name, pages_list in pdf_page_groups.items() %}
+                <div class="subject-card p-2 mb-2 border">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong class="text-primary"><i class="bi bi-file-pdf me-1"></i>{{
+                            pdf_name.replace('.pdf','').replace('.PDF','') }}</strong>
+                        <span class="badge bg-secondary">{{ pages_list|length }} Pages Required</span>
+                    </div>
+                    <div class="mt-1">
+                        {% for pg in pages_list %}
+                        <span class="page-badge">Page {{ pg }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-light p-3 rounded border">
+            <h6 class="fw-bold text-dark mb-1">⚡ Upload Attendance Sheet Images (`Ctrl + A` or Manual Select Supported):
+            </h6>
+            <p class="text-muted small mb-3">Press Browse to pick files individually, or press <code>Ctrl + A</code>
+                inside your folder to select all images at once.</p>
+            <div class="row g-3">
+                {% for pdf_name in pdf_page_groups.keys() %}
+                <div class="col-md-6">
+                    <div class="card p-3 border">
+                        <label class="form-label small fw-bold text-dark">📁 {{
+                            pdf_name.replace('.pdf','').replace('.PDF','') }} Scanned Sheets:</label>
+                        <input type="file" class="form-control auto-input-group"
+                            data-subj="{{ pdf_name.replace('.pdf','').replace('.PDF','') }}" multiple
+                            accept=".jpg, .jpeg, .png"
+                            onchange="displaySelectedFileNames(this, 'auto_files_{{ loop.index }}')">
+                        <div id="auto_files_{{ loop.index }}" class="mt-2"></div>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="col-12 text-end">
+                    <button type="button" onclick="startSubjectWiseUpload('auto-input-group')"
+                        class="btn btn-primary fw-bold px-4">
+                        ⚡ Process & Launch Smart Guided Input
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <form id="openScreenForm" action="/open-input-screen" method="POST" class="d-none">
+            <input type="hidden" name="working_excel" value="{{ working_excel }}">
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- GUIDED INPUT SCREEN -->
+    {% if step == 'guided_input' %}
+    <form action="/save-guided-scripts" method="POST"
+        onsubmit="showProcessingModal('Saving script numbers and generating final Excel export...')">
+        <input type="hidden" name="working_excel" value="{{ working_excel }}">
+
+        <div class="row g-3">
+            <!-- IMAGE PREVIEW CONTAINER -->
+            <div class="col-md-7">
+                <div class="card p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                        <span class="fw-bold text-dark"><i class="bi bi-crosshair me-1 text-primary"></i> Smart Focused
+                            Sheet View</span>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 me-1"
+                                onclick="adjustZoom(0.15)"><i class="bi bi-zoom-in"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 me-1"
+                                onclick="adjustZoom(-0.15)"><i class="bi bi-zoom-out"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-dark py-0" onclick="resetZoom()"><i
+                                    class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                            <span class="badge bg-primary fs-6 ms-2" id="activePageBadge">Page Preview</span>
+                        </div>
+                    </div>
+
+                    <div class="img-preview-box" id="imgPreviewContainer">
+                        <img id="mainImagePreview" src="" alt="Click on any student script box to focus sheet view">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCRIPT NUMBER INPUT CONTAINER -->
+            <div class="col-md-5">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold text-primary mb-0"><i class="bi bi-pencil-square me-1"></i> Script Number
+                            Entry</h6>
+                        <button type="submit" class="btn btn-success fw-bold px-3">
+                            <i class="bi bi-download me-1"></i> Save & Export Final
+                        </button>
+                    </div>
+
+                    <div class="student-input-list">
+                        <table class="table table-hover table-bordered align-middle">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th style="width: 55px;">Pg</th>
+                                    <th>Student Details</th>
+                                    <th style="width: 140px;">Script No.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for st in students %}
+                                <tr class="student-row-item">
+                                    <td><span class="badge bg-info text-dark">{{ st.page }}</span></td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ st.name }}</div>
+                                        <small class="text-muted">Roll: {{ st.roll }}</small>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="script_{{ st.row_index }}"
+                                            value="{{ st.current_script }}"
+                                            class="form-control fw-bold text-primary script-input-field"
+                                            placeholder="Type..."
+                                            data-img="/static/uploaded_sheets/{{ st.image_filename }}"
+                                            data-pg="Page {{ st.page }}" data-pos="{{ loop.index0 }}"
+                                            data-total="{{ students|length }}" onfocus="smartFocusStudent(this)">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    <!-- STEP 2 COMPLETED -->
+    {% if step == '2_completed' %}
+    <div class="card p-4 border-primary text-center mx-auto" style="max-width: 650px;">
+        <h4 class="fw-bold text-primary mb-2"><i class="bi bi-check-circle-fill me-2"></i>Script Numbers Saved
+            Successfully!</h4>
+        <p class="text-muted">Updated {{ updated_count }} script entries into the final export file.</p>
+        <div class="mt-3">
+            <a href="/download/{{ final_download }}" class="btn btn-success btn-lg fw-bold px-5">
+                <i class="bi bi-file-earmark-arrow-down me-2"></i> Download Final Completed Excel
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PROCESSING OVERLAY MODAL -->
+    <div class="processing-modal" id="processingModal">
+        <div class="processing-card">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-dark mb-1" id="processingTitle">Processing Requests</h5>
+            <p class="text-muted small mb-3" id="processingSubtitle">Please wait...</p>
+            <div class="progress" style="height: 18px;">
+                <div id="processingProgressBar"
+                    class="progress-bar progress-bar-striped progress-bar-animated bg-primary fw-bold"
+                    style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentZoom = 1.0;
+
+        function showProcessingModal(titleText) {
+            document.getElementById('processingTitle').innerText = titleText;
+            document.getElementById('processingModal').style.display = 'flex';
+        }
+
+        function displaySelectedFileNames(input, targetContainerId) {
+            const container = document.getElementById(targetContainerId);
+            container.innerHTML = '';
+            if (input.files && input.files.length > 0) {
+                let listHtml = '<div class="d-flex flex-wrap gap-1">';
+                const maxDisplay = 4;
+                for (let i = 0; i < Math.min(input.files.length, maxDisplay); i++) {
+                    listHtml += `<span class="badge bg-secondary file-list-badge"><i class="bi bi-file-earmark me-1"></i>${input.files[i].name}</span>`;
+                }
+                if (input.files.length > maxDisplay) {
+                    listHtml += `<span class="badge bg-dark file-list-badge">+${input.files.length - maxDisplay} more</span>`;
+                }
+                listHtml += '</div>';
+                container.innerHTML = listHtml;
+            }
+        }
+
+        async function startSubjectWiseUpload(className) {
+            let inputElems = document.querySelectorAll('.' + className);
+            let uploadTasks = [];
+
+            inputElems.forEach(elem => {
+                let subjKey = elem.getAttribute('data-subj');
+                if (elem.files && elem.files.length > 0) {
+                    for (let f of elem.files) {
+                        uploadTasks.push({ file: f, subj: subjKey });
+                    }
+                }
+            });
+
+            if (uploadTasks.length === 0) {
+                alert("Please select target image files first.");
+                return;
+            }
+
+            showProcessingModal("Uploading Target Page Sheets...");
+            const progressBar = document.getElementById('processingProgressBar');
+            const statusText = document.getElementById('processingSubtitle');
+
+            let total = uploadTasks.length;
+            let completed = 0;
+            let targetSaved = 0;
+
+            for (let task of uploadTasks) {
+                const formData = new FormData();
+                formData.append('file', task.file);
+                formData.append('subject_key', task.subj);
+                formData.append('working_excel', "{{ working_excel }}");
+
+                try {
+                    let response = await fetch('/upload-single-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    let result = await response.json();
+                    if (result.status === 'saved') {
+                        targetSaved++;
+                    }
+                } catch (e) {
+                    console.error("Upload Error:", e);
+                }
+
+                completed++;
+                let percent = Math.round((completed / total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.innerText = percent + '%';
+                statusText.innerText = `Processed ${completed} / ${total} images (Target Saved: ${targetSaved})`;
+            }
+
+            statusText.innerText = "Launching Smart Guided Interface...";
+            setTimeout(() => {
+                document.getElementById('openScreenForm').submit();
+            }, 400);
+        }
+
+        function smartFocusStudent(inputElem) {
+            var imgSrc = inputElem.getAttribute('data-img');
+            var pgText = inputElem.getAttribute('data-pg');
+            var posIndex = parseInt(inputElem.getAttribute('data-pos')) || 0;
+            var totalCount = parseInt(inputElem.getAttribute('data-total')) || 25;
+
+            var imgObj = document.getElementById('mainImagePreview');
+            var container = document.getElementById('imgPreviewContainer');
+
+            document.querySelectorAll('.student-row-item').forEach(r => r.classList.remove('input-active-row'));
+            inputElem.closest('tr').classList.add('input-active-row');
+
+            if (!imgObj.src.endsWith(imgSrc)) {
+                imgObj.src = imgSrc;
+                document.getElementById('activePageBadge').innerText = pgText;
+            }
+
+            imgObj.onload = function () {
+                var imgHeight = imgObj.clientHeight;
+                var estimatedHeaderOffset = imgHeight * 0.22;
+                var usableHeight = imgHeight * 0.72;
+
+                var targetY = estimatedHeaderOffset + ((posIndex % 25) / 25) * usableHeight;
+                container.scrollTop = targetY - (container.clientHeight / 2.5);
+            };
+
+            if (imgObj.complete) {
+                imgObj.onload();
+            }
+        }
+
+        function adjustZoom(amount) {
+            currentZoom += amount;
+            if (currentZoom < 0.8) currentZoom = 0.8;
+            if (currentZoom > 2.5) currentZoom = 2.5;
+            document.getElementById('mainImagePreview').style.transform = `scale(${currentZoom})`;
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            document.getElementById('mainImagePreview').style.transform = `scale(1.0)`;
+        }
+
+        window.onload = function () {
+            var firstInput = document.querySelector('.script-input-field');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        };
+    </script>
+</body>
+
+</html>
